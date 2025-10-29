@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tờ Lịch - Dương & Âm (thời gian Internet)</title>
+  <style>
+    :root{
+      --green: #4c8a2f;
+      --light-green: #dff0d8;
+      --accent: #f05a5a;
+      --muted: #888;
+      --bg: #fff;
+      --shadow: rgba(0,0,0,0.12);
+      font-family: "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      background:linear-gradient(#f6fbff,#ffffff 40%);
+      display:flex;
+      justify-content:center;
+      padding:18px;
+    }
+    .card{
+      width:360px;
+      background:var(--bg);
+      border-radius:8px;
+      box-shadow:0 6px 18px var(--shadow);
+      overflow:hidden;
+    }
+    .topbar{
+      height:56px;
+      background:var(--green);
+      color:white;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:0 12px;
+    }
+    .topbar .month { font-weight:700; letter-spacing:0.6px }
+    .topbar .icons { opacity:0.95 }
+    .hero{
+      padding:18px;
+      text-align:center;
+      background:
+        radial-gradient(circle at 20% 30%, rgba(255,255,255,0.6), rgba(255,255,255,0) 30%),
+        linear-gradient(#f8fbff,#ffffff);
+    }
+    .day-num{
+      font-size:140px;
+      line-height:0.85;
+      color:var(--green);
+      text-shadow: 0 4px 0 rgba(0,0,0,0.06);
+      font-weight:800;
+      margin:0;
+    }
+    .weekday{
+      font-size:20px;
+      font-weight:700;
+      color:#222;
+      margin-top:6px;
+    }
+    .lunar-festival{
+      color: #e53935;
+      font-weight:600;
+      margin-top:6px;
+    }
+    .quote{
+      margin-top:14px;
+      color:#222;
+      font-size:15px;
+      padding:0 6px;
+    }
+    .info-row{
+      display:flex;
+      padding:12px 14px;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .left, .right { width:48%; }
+    .label{ font-size:14px; color:var(--muted) }
+    .big-center{
+      width:88px;
+      height:88px;
+      border-radius:50%;
+      background:linear-gradient(#f7fff7,#dff0d8);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      box-shadow:0 2px 6px rgba(0,0,0,0.06);
+    }
+    .big-center .num{ font-size:34px; color:var(--green); font-weight:700 }
+    .big-center .txt{ font-size:13px; color:var(--green); margin-top:4px; font-weight:600 }
+    .time-now{ font-size:20px; font-weight:700; color: #d32f2f }
+    .canchi{ font-size:14px; color:#2e7d32; font-weight:700 }
+    .footer-bar{
+      background:var(--green);
+      color:white;
+      padding:8px 12px;
+      font-weight:700;
+      font-size:14px;
+      text-align:center;
+    }
+    /* Ẩn thông tin đồng bộ giờ hệ thống */
+    #tzInfo { display: none; }
+    @media (max-width:420px){
+      .card{ width:320px }
+      .day-num{ font-size:120px }
+    }
+  </style>
+</head>
+<body>
+  <div class="card" role="application" aria-label="Lịch ngày">
+    <div class="topbar">
+      <div class="month" id="monthLabel"></div>
+      <div class="icons">＋ 💡</div>
+    </div>
+    <div class="hero">
+      <p class="day-num" id="dayNumber"></p>
+      <div class="weekday" id="weekdayText"></div>
+      <div class="lunar-festival" id="lunarFestival"></div>
+      <div class="quote" id="quote"></div>
+    </div>
+    <div class="info-row">
+      <div class="left">
+        <div class="label">● Ngày (Can Chi)</div>
+        <div style="margin-top:6px">
+          <div style="font-size:18px; font-weight:700; color:#1565c0" id="canChiDay"></div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;flex-direction:column;gap:8px;">
+        <div class="big-center">
+          <div class="num" id="lunarDay"></div>
+          <div class="txt" id="lunarDayTxt"></div>
+        </div>
+      </div>
+      <div class="right">
+        <div class="label">Tháng</div>
+        <div style="margin-top:6px">
+          <div style="font-size:18px; font-weight:700; color:#ff9800" id="lunarMonthText"></div>
+        </div>
+      </div>
+    </div>
+    <div class="info-row" style="padding-top:0;">
+      <div class="left">
+        <div class="label">Giờ</div>
+        <div class="time-now" id="timeNow"></div>
+      </div>
+      <div style="width:48%"></div>
+      <div class="right" style="text-align:right">
+        <div class="label">Năm</div>
+        <div class="canchi" id="lunarYearText"></div>
+      </div>
+    </div>
+    <div class="footer-bar">
+      Made by Minh Nhựt
+    </div>
+    <div id="tzInfo"></div>
+  </div>
+<script>
+let serverDate = null;
+let serverOffset = 0;
+let usedTimeSource = 'internet';
+async function syncTimeFromInternet(){
+  try{
+    const res = await fetch('https://worldtimeapi.org/api/ip',{cache:'no-store'});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const data = await res.json();
+    serverDate = new Date(data.datetime);
+    serverOffset = serverDate.getTime() - Date.now();
+    usedTimeSource = 'internet';
+    document.getElementById('tzInfo').textContent = 'Giờ đồng bộ: Internet (' + (data.timezone || 'worldtimeapi') + ')';
+  }catch(err){
+    serverDate = new Date();
+    serverOffset = 0;
+    usedTimeSource = 'local';
+    document.getElementById('tzInfo').textContent = 'Giờ đồng bộ: Hệ thống (fallback)';
+  }
+}
+function now(){
+  return new Date(Date.now() + serverOffset);
+}
+function INT(d){ return Math.floor(d); }
+function jdFromDate(dd, mm, yy){
+  let a = INT((14 - mm) / 12);
+  let y = yy + 4800 - a;
+  let m = mm + 12 * a - 3;
+  let jd = dd + INT((153*m + 2)/5) + 365*y + INT(y/4) - INT(y/100) + INT(y/400) - 32045;
+  if (jd < 2299161){
+    jd = dd + INT((153*m + 2)/5) + 365*y + INT(y/4) - 32083;
+  }
+  return jd;
+}
+function jdToDate(jd){
+  let a, b, c, d, e, m;
+  if (jd > 2299160){
+    let alpha = INT((jd - 1867216.25)/36524.25);
+    a = jd + 1 + alpha - INT(alpha/4);
+  } else a = jd;
+  b = a + 1524;
+  c = INT((b - 122.1)/365.25);
+  d = INT(365.25 * c);
+  e = INT((b - d)/30.6001);
+  let day = b - d - INT(30.6001 * e);
+  let month = e < 14 ? e - 1 : e - 13;
+  let year = month > 2 ? c - 4716 : c - 4715;
+  return [day, month, year];
+}
+function NewMoon(k){
+  let T = k/1236.85;
+  let T2 = T*T;
+  let T3 = T2*T;
+  let dr = Math.PI/180;
+  let Jd1 = 2415020.75933 + 29.53058868*k + 0.0001178*T2 - 0.000000155*T3;
+  Jd1 += 0.00033 * Math.sin((166.56 + 132.87*T - 0.009173*T2)*dr);
+  let M = 359.2242 + 29.10535608*k - 0.0000333*T2 - 0.00000347*T3;
+  let Mpr = 306.0253 + 385.81691806*k + 0.0107306*T2 + 0.00001236*T3;
+  let F = 21.2964 + 390.67050646*k - 0.0016528*T2 - 0.00000239*T3;
+  let C1 = (0.1734 - 0.000393*T) * Math.sin(M*dr) + 0.0021 * Math.sin(2*dr*M);
+  C1 -= 0.4068 * Math.sin(Mpr*dr) + 0.0161 * Math.sin(dr*2*Mpr);
+  C1 -= 0.0004 * Math.sin(dr*3*Mpr);
+  C1 += 0.0104 * Math.sin(dr*2*F) - 0.0051 * Math.sin(dr*(M + Mpr));
+  C1 -= 0.0074 * Math.sin(dr*(M - Mpr)) + 0.0004 * Math.sin(dr*(2*F + M));
+  C1 -= 0.0004 * Math.sin(dr*(2*F - M)) - 0.0006 * Math.sin(dr*(2*F + Mpr));
+  C1 += 0.0010 * Math.sin(dr*(2*F - Mpr)) + 0.0005 * Math.sin(dr*(2*Mpr + M));
+  let deltaT;
+  if (T < -11) deltaT = 0.001 + 0.000839*T + 0.0002261*T2 - 0.00000845*T3 - 0.000000081*T*T3;
+  else deltaT = -0.000278 + 0.000265*T + 0.000262*T2;
+  let JdNew = Jd1 + C1 - deltaT;
+  return JdNew;
+}
+function getNewMoonDay(k, timeZone){
+  return INT(NewMoon(k) + 0.5 + timeZone/24.0);
+}
+function SunLongitude(jdn, timeZone){
+  let T = (jdn - 2451545.0 - timeZone/24.0) / 36525;
+  let T2 = T*T;
+  let dr = Math.PI/180;
+  let M = 357.52910 + 35999.05030*T - 0.0001559*T2 - 0.00000048*T*T2;
+  let L0 = 280.46645 + 36000.76983*T + 0.0003032*T2;
+  let DL = (1.914600 - 0.004817*T - 0.000014*T2)*Math.sin(dr*M);
+  DL += (0.019993 - 0.000101*T)*Math.sin(dr*2*M) + 0.000290*Math.sin(dr*3*M);
+  let L = L0 + DL;
+  L = L*dr;
+  L = L - Math.PI*2*(INT(L/(Math.PI*2)));
+  return INT(L / Math.PI * 6);
+}
+function getLunarMonth11(yy, timeZone){
+  let off = jdFromDate(31, 12, yy) - 2415021;
+  let k = INT(off / 29.530588853);
+  let nm = getNewMoonDay(k, timeZone);
+  let sunLong = SunLongitude(nm, timeZone);
+  if (sunLong >= 9) nm = getNewMoonDay(k-1, timeZone);
+  return nm;
+}
+function getLeapMonthOffset(a11, timeZone){
+  let k = INT((a11 - 2415021.076998695) / 29.530588853 + 0.5);
+  let last = 0;
+  let i = 1;
+  let arc = SunLongitude(getNewMoonDay(k + i, timeZone), timeZone);
+  do{
+    last = arc;
+    i++;
+    arc = SunLongitude(getNewMoonDay(k + i, timeZone), timeZone);
+  } while (arc != last && i < 14);
+  return i - 1;
+}
+function convertSolar2Lunar(dd, mm, yy, timeZone){
+  let dayNumber = jdFromDate(dd, mm, yy);
+  let k = INT((dayNumber - 2415021.076998695) / 29.530588853);
+  let monthStart = getNewMoonDay(k+1, timeZone);
+  if (monthStart > dayNumber){
+    monthStart = getNewMoonDay(k, timeZone);
+  }
+  let a11 = getLunarMonth11(yy, timeZone);
+  let b11 = a11;
+  let lunarYear;
+  if (a11 >= monthStart){
+    lunarYear = yy;
+    a11 = getLunarMonth11(yy-1, timeZone);
+  } else {
+    lunarYear = yy+1;
+    b11 = getLunarMonth11(yy+1, timeZone);
+  }
+  let lunarDay = dayNumber - monthStart + 1;
+  let diff = INT((monthStart - a11)/29);
+  let lunarLeap = 0;
+  let lunarMonth = diff + 11;
+  if (b11 - a11 > 365){
+    let leapMonthDiff = getLeapMonthOffset(a11, timeZone);
+    if (diff >= leapMonthDiff){
+      lunarMonth = diff + 10;
+      if (diff == leapMonthDiff) lunarLeap = 1;
+    }
+  }
+  if (lunarMonth > 12) lunarMonth -= 12;
+  if (lunarMonth >= 11 && diff < 4) lunarYear -= 1;
+  return {day: lunarDay, month: lunarMonth, year: lunarYear, leap: lunarLeap};
+}
+const CAN = ['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'];
+const CHI = ['Tý','Sửu','Dần','Mão','Thìn','Tỵ','Ngọ','Mùi','Thân','Dậu','Tuất','Hợi'];
+function getCanChiDay(jd){
+  let can = CAN[(jd + 9) % 10];
+  let chi = CHI[(jd + 1) % 12];
+  return can + ' ' + chi;
+}
+function getCanChiMonth(lunarMonth, lunarYear){
+  let index = (lunarYear*12 + lunarMonth + 3) % 10;
+  return CAN[index] + ' ' + CHI[(lunarMonth+1)%12];
+}
+function getCanChiYear(lunarYear){
+  return CAN[(lunarYear + 6) % 10] + ' ' + CHI[(lunarYear + 8) % 12];
+}
+const WEEKDAY_VN = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
+const QUOTES = [
+  "Tha thứ cho sự oán thù là đã tự chữa vết thương của lòng mình.",
+  "Cuộc sống là chuỗi ngày kiên trì, không bỏ cuộc.",
+  "Hạnh phúc là biết đủ.",
+  "Thành công bắt đầu từ ý chí.",
+  "Mỗi ngày là một khởi đầu mới.",
+  "Không có áp lực, không có kim cương.",
+  "Đường dài mới biết ngựa hay.",
+  "Chỉ có hành động mới tạo ra kết quả.",
+  "Kiên trì là chìa khóa của thành công.",
+  "Chẳng có gì là không thể!"
+];
+function randomQuote(){
+  return QUOTES[Math.floor(Math.random() * QUOTES.length)];
+}
+function getFestival(dd, mm, yy, lunar) {
+  // Sự kiện dương lịch
+  if (dd === 1 && mm === 1) return "Tết Dương Lịch";
+  if (dd === 30 && mm === 4) return "Giải phóng miền Nam";
+  if (dd === 1 && mm === 5) return "Quốc tế Lao động";
+  if (dd === 2 && mm === 9) return "Quốc khánh";
+  // Sự kiện âm lịch
+  if (lunar.month === 1 && lunar.day === 1) return "Tết Nguyên Đán";
+  if (lunar.month === 1 && lunar.day === 15) return "Rằm tháng Giêng";
+  if (lunar.month === 5 && lunar.day === 5) return "Tết Đoan Ngọ";
+  if (lunar.month === 7 && lunar.day === 15) return "Lễ Vu Lan";
+  if (lunar.month === 8 && lunar.day === 15) return "Tết Trung Thu";
+  if (lunar.month === 9 && lunar.day === 9) return "Tết Trùng Cửu";
+  return "";
+}
+function updateAll(){
+  const d = now();
+  const dd = d.getDate();
+  const mm = d.getMonth()+1;
+  const yy = d.getFullYear();
+  const tzHour = -d.getTimezoneOffset() / 60;
+  document.getElementById('dayNumber').textContent = String(dd).padStart(2,'0');
+  document.getElementById('monthLabel').textContent = mm + '/' + yy;
+  document.getElementById('weekdayText').textContent = WEEKDAY_VN[d.getDay()].toUpperCase();
+  // Giờ, phút, giây
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mi = String(d.getMinutes()).padStart(2,'0');
+  const ss = String(d.getSeconds()).padStart(2,'0');
+  document.getElementById('timeNow').textContent = hh + ':' + mi + ':' + ss;
+  // Âm lịch
+  const lunar = convertSolar2Lunar(dd, mm, yy, tzHour);
+  document.getElementById('lunarDay').textContent = lunar.day;
+  const numberToText = ['KHÔNG','MỘT','HAI','BA','BỐN','NĂM','SÁU','BẢY','TÁM','CHÍN','MƯƠI','MƯỜI MỘT'];
+  document.getElementById('lunarDayTxt').textContent = (lunar.day <= 11 ? numberToText[lunar.day] : String(lunar.day)).toUpperCase();
+  document.getElementById('lunarMonthText').textContent = getCanChiMonth(lunar.month, lunar.year);
+  document.getElementById('canChiDay').textContent = getCanChiDay(jdFromDate(dd, mm, yy));
+  document.getElementById('lunarYearText').textContent = getCanChiYear(lunar.year);
+  // Sự kiện đặc biệt
+  let festival = getFestival(dd, mm, yy, lunar);
+  document.getElementById('lunarFestival').textContent = festival;
+  // Châm ngôn ngẫu nhiên (chỉ đổi khi load lại trang)
+  if (updateAll.firstRun) {
+    document.getElementById('quote').textContent = randomQuote();
+    updateAll.firstRun = false;
+  }
+}
+updateAll.firstRun = true;
+(async function main(){
+  await syncTimeFromInternet();
+  updateAll();
+  setInterval(updateAll, 1000);
+  setInterval(syncTimeFromInternet, 10 * 60 * 1000);
+})();
+</script>
+</body>
+</html>

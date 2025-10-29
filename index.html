@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Tờ Lịch - Dương & Âm (thời gian Internet)</title>
+  <title>Lịch Việt</title>
   <style>
     :root{
       --green: #4c8a2f;
@@ -17,10 +17,11 @@
     *{box-sizing:border-box}
     body{
       margin:0;
-      background:linear-gradient(#f6fbff,#ffffff 40%);
+      background:linear-gradient(var(--bg-gradient-start, #f6fbff),var(--bg-gradient-end, #ffffff) 40%);
       display:flex;
       justify-content:center;
       padding:18px;
+      transition: background 0.6s;
     }
     .card{
       width:360px;
@@ -28,6 +29,7 @@
       border-radius:8px;
       box-shadow:0 6px 18px var(--shadow);
       overflow:hidden;
+      transition: background 0.6s;
     }
     .topbar{
       height:56px;
@@ -37,6 +39,7 @@
       align-items:center;
       justify-content:space-between;
       padding:0 12px;
+      transition: background 0.6s;
     }
     .topbar .month { font-weight:700; letter-spacing:0.6px }
     .topbar .icons { opacity:0.95 }
@@ -45,7 +48,8 @@
       text-align:center;
       background:
         radial-gradient(circle at 20% 30%, rgba(255,255,255,0.6), rgba(255,255,255,0) 30%),
-        linear-gradient(#f8fbff,#ffffff);
+        linear-gradient(var(--hero-gradient-start, #f8fbff),var(--hero-gradient-end, #ffffff));
+      transition: background 0.6s;
     }
     .day-num{
       font-size:140px;
@@ -54,23 +58,28 @@
       text-shadow: 0 4px 0 rgba(0,0,0,0.06);
       font-weight:800;
       margin:0;
+      transition: color 0.6s;
     }
     .weekday{
       font-size:20px;
       font-weight:700;
-      color:#222;
+      color:var(--accent);
       margin-top:6px;
+      transition: color 0.6s;
     }
     .lunar-festival{
-      color: #e53935;
+      color: var(--accent);
       font-weight:600;
       margin-top:6px;
+      transition: color 0.6s;
     }
     .quote{
       margin-top:14px;
-      color:#222;
+      color:var(--accent);
       font-size:15px;
       padding:0 6px;
+      font-style: italic;
+      transition: color 0.6s;
     }
     .info-row{
       display:flex;
@@ -85,16 +94,17 @@
       width:88px;
       height:88px;
       border-radius:50%;
-      background:linear-gradient(#f7fff7,#dff0d8);
+      background:var(--light-green);
       display:flex;
       align-items:center;
       justify-content:center;
       flex-direction:column;
       box-shadow:0 2px 6px rgba(0,0,0,0.06);
+      transition: background 0.6s;
     }
     .big-center .num{ font-size:34px; color:var(--green); font-weight:700 }
     .big-center .txt{ font-size:13px; color:var(--green); margin-top:4px; font-weight:600 }
-    .time-now{ font-size:20px; font-weight:700; color: #d32f2f }
+    .time-now{ font-size:20px; font-weight:700; color: var(--accent) }
     .canchi{ font-size:14px; color:#2e7d32; font-weight:700 }
     .footer-bar{
       background:var(--green);
@@ -103,8 +113,8 @@
       font-weight:700;
       font-size:14px;
       text-align:center;
+      transition: background 0.6s;
     }
-    /* Ẩn thông tin đồng bộ giờ hệ thống */
     #tzInfo { display: none; }
     @media (max-width:420px){
       .card{ width:320px }
@@ -164,6 +174,117 @@
 let serverDate = null;
 let serverOffset = 0;
 let usedTimeSource = 'internet';
+
+// Danh sách mẫu màu lịch (có thể mở rộng thêm)
+const COLOR_SCHEMES = [
+  {
+    "--green": "#c62828",
+    "--light-green": "#ffebee",
+    "--accent": "#fbc02d",
+    "--muted": "#888",
+    "--bg": "#fff",
+    "--shadow": "rgba(198,40,40,0.12)",
+    "--bg-gradient-start": "#ffd6d6",
+    "--bg-gradient-end": "#fff8f0",
+    "--hero-gradient-start": "#fff8f0",
+    "--hero-gradient-end": "#ffd6d6"
+  },
+  {
+    "--green": "#1565c0",
+    "--light-green": "#e3f2fd",
+    "--accent": "#f57c00",
+    "--muted": "#888",
+    "--bg": "#fff",
+    "--shadow": "rgba(21,101,192,0.12)",
+    "--bg-gradient-start": "#e3f2fd",
+    "--bg-gradient-end": "#ffffff",
+    "--hero-gradient-start": "#f8fbff",
+    "--hero-gradient-end": "#e3f2fd"
+  },
+  {
+    "--green": "#388e3c",
+    "--light-green": "#c8e6c9",
+    "--accent": "#f05a5a",
+    "--muted": "#888",
+    "--bg": "#fff",
+    "--shadow": "rgba(56,142,60,0.12)",
+    "--bg-gradient-start": "#dff0d8",
+    "--bg-gradient-end": "#fff",
+    "--hero-gradient-start": "#f8fbff",
+    "--hero-gradient-end": "#dff0d8"
+  },
+  {
+    "--green": "#7b1fa2",
+    "--light-green": "#f3e5f5",
+    "--accent": "#ffb300",
+    "--muted": "#888",
+    "--bg": "#fff",
+    "--shadow": "rgba(123,31,162,0.12)",
+    "--bg-gradient-start": "#f3e5f5",
+    "--bg-gradient-end": "#fff",
+    "--hero-gradient-start": "#f3e5f5",
+    "--hero-gradient-end": "#fff"
+  },
+  {
+    "--green": "#009688",
+    "--light-green": "#e0f7fa",
+    "--accent": "#ff5722",
+    "--muted": "#888",
+    "--bg": "#fff",
+    "--shadow": "rgba(0,150,136,0.12)",
+    "--bg-gradient-start": "#e0f7fa",
+    "--bg-gradient-end": "#fff",
+    "--hero-gradient-start": "#e0f7fa",
+    "--hero-gradient-end": "#fff"
+  },
+  // Thêm nhiều mẫu nếu muốn
+];
+
+// 30 câu châm ngôn
+const QUOTES = [
+  "Tha thứ cho sự oán thù là đã tự chữa vết thương của lòng mình.",
+  "Cuộc sống là chuỗi ngày kiên trì, không bỏ cuộc.",
+  "Hạnh phúc là biết đủ.",
+  "Thành công bắt đầu từ ý chí.",
+  "Mỗi ngày là một khởi đầu mới.",
+  "Không có áp lực, không có kim cương.",
+  "Đường dài mới biết ngựa hay.",
+  "Chỉ có hành động mới tạo ra kết quả.",
+  "Kiên trì là chìa khóa của thành công.",
+  "Chẳng có gì là không thể!",
+  "Cơ hội chỉ đến với ai luôn sẵn sàng.",
+  "Thành công không dành cho người lười biếng.",
+  "Muốn đi nhanh hãy đi một mình, muốn đi xa hãy đi cùng nhau.",
+  "Thất bại là mẹ thành công.",
+  "Giá trị lớn nhất của con người là lòng kiên nhẫn.",
+  "Hãy sống như ngày mai không tồn tại.",
+  "Thời gian là vàng bạc.",
+  "Chỉ cần bạn không bỏ cuộc, bạn sẽ thành công.",
+  "Niềm tin là sức mạnh lớn nhất.",
+  "Hãy làm việc mình yêu thích, thành công sẽ đến.",
+  "Đừng sợ thất bại, hãy sợ không thử.",
+  "Lựa chọn hôm nay quyết định tương lai ngày mai.",
+  "Mỗi thử thách là một cơ hội.",
+  "Cuộc sống là món quà, hãy tận hưởng.",
+  "Biết ơn là cách sống hạnh phúc.",
+  "Đừng chờ cơ hội, hãy tạo ra nó.",
+  "Kiên định là chìa khóa mở cánh cửa thành công.",
+  "Giấc mơ không có hạn sử dụng.",
+  "Học hỏi mỗi ngày để phát triển.",
+  "Hãy sống bằng cả trái tim và lý trí."
+];
+
+// Mỗi lần truy cập: chọn màu và câu châm ngôn ngẫu nhiên
+const colorIdx = Math.floor(Math.random() * COLOR_SCHEMES.length);
+const quoteIdx = Math.floor(Math.random() * QUOTES.length);
+
+function applyColorScheme(scheme){
+  for(let key in scheme){
+    document.documentElement.style.setProperty(key, scheme[key]);
+  }
+}
+
+// --- Đoạn code lịch cũ, giữ nguyên các hàm chuyển đổi âm dương lịch ---
 async function syncTimeFromInternet(){
   try{
     const res = await fetch('https://worldtimeapi.org/api/ip',{cache:'no-store'});
@@ -315,21 +436,6 @@ function getCanChiYear(lunarYear){
   return CAN[(lunarYear + 6) % 10] + ' ' + CHI[(lunarYear + 8) % 12];
 }
 const WEEKDAY_VN = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
-const QUOTES = [
-  "Tha thứ cho sự oán thù là đã tự chữa vết thương của lòng mình.",
-  "Cuộc sống là chuỗi ngày kiên trì, không bỏ cuộc.",
-  "Hạnh phúc là biết đủ.",
-  "Thành công bắt đầu từ ý chí.",
-  "Mỗi ngày là một khởi đầu mới.",
-  "Không có áp lực, không có kim cương.",
-  "Đường dài mới biết ngựa hay.",
-  "Chỉ có hành động mới tạo ra kết quả.",
-  "Kiên trì là chìa khóa của thành công.",
-  "Chẳng có gì là không thể!"
-];
-function randomQuote(){
-  return QUOTES[Math.floor(Math.random() * QUOTES.length)];
-}
 function getFestival(dd, mm, yy, lunar) {
   // Sự kiện dương lịch
   if (dd === 1 && mm === 1) return "Tết Dương Lịch";
@@ -370,13 +476,16 @@ function updateAll(){
   // Sự kiện đặc biệt
   let festival = getFestival(dd, mm, yy, lunar);
   document.getElementById('lunarFestival').textContent = festival;
-  // Châm ngôn ngẫu nhiên (chỉ đổi khi load lại trang)
+  // Châm ngôn ngẫu nhiên (mỗi lần truy cập giữ nguyên)
   if (updateAll.firstRun) {
-    document.getElementById('quote').textContent = randomQuote();
+    document.getElementById('quote').textContent = QUOTES[quoteIdx];
     updateAll.firstRun = false;
   }
 }
 updateAll.firstRun = true;
+
+applyColorScheme(COLOR_SCHEMES[colorIdx]); // Áp dụng màu lịch ngẫu nhiên
+
 (async function main(){
   await syncTimeFromInternet();
   updateAll();

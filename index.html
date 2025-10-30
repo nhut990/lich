@@ -84,11 +84,11 @@
     .info-row{
       display:flex;
       padding:12px 14px;
-      gap:12px;
+      gap:32px; /* Tăng gap để cân đối 2 bên */
       align-items:center;
       justify-content:space-between;
     }
-    .left, .right { width:48%; }
+    .left, .right { width:44%; } /* Thu nhỏ lại một chút cho ô tròn nổi bật hơn */
     .label{ font-size:14px; color:var(--muted) }
     .big-center{
       width:88px;
@@ -119,6 +119,7 @@
     @media (max-width:420px){
       .card{ width:320px }
       .day-num{ font-size:120px }
+      .info-row{ gap:16px; }
     }
   </style>
 </head>
@@ -175,7 +176,6 @@ let serverDate = null;
 let serverOffset = 0;
 let usedTimeSource = 'internet';
 
-// Danh sách mẫu màu lịch (có thể mở rộng thêm)
 const COLOR_SCHEMES = [
   {
     "--green": "#c62828",
@@ -236,11 +236,9 @@ const COLOR_SCHEMES = [
     "--bg-gradient-end": "#fff",
     "--hero-gradient-start": "#e0f7fa",
     "--hero-gradient-end": "#fff"
-  },
-  // Thêm nhiều mẫu nếu muốn
+  }
 ];
 
-// 30 câu châm ngôn
 const QUOTES = [
   "Tha thứ cho sự oán thù là đã tự chữa vết thương của lòng mình.",
   "Cuộc sống là chuỗi ngày kiên trì, không bỏ cuộc.",
@@ -274,7 +272,6 @@ const QUOTES = [
   "Hãy sống bằng cả trái tim và lý trí."
 ];
 
-// Mỗi lần truy cập: chọn màu và câu châm ngôn ngẫu nhiên
 const colorIdx = Math.floor(Math.random() * COLOR_SCHEMES.length);
 const quoteIdx = Math.floor(Math.random() * QUOTES.length);
 
@@ -284,7 +281,6 @@ function applyColorScheme(scheme){
   }
 }
 
-// --- Đoạn code lịch cũ, giữ nguyên các hàm chuyển đổi âm dương lịch ---
 async function syncTimeFromInternet(){
   try{
     const res = await fetch('https://worldtimeapi.org/api/ip',{cache:'no-store'});
@@ -418,7 +414,6 @@ function convertSolar2Lunar(dd, mm, yy, timeZone){
     }
   }
   if (lunarMonth > 12) lunarMonth -= 12;
-  if (lunarMonth >= 11 && diff < 4) lunarYear -= 1;
   return {day: lunarDay, month: lunarMonth, year: lunarYear, leap: lunarLeap};
 }
 const CAN = ['Giáp','Ất','Bính','Đinh','Mậu','Kỷ','Canh','Tân','Nhâm','Quý'];
@@ -437,12 +432,10 @@ function getCanChiYear(lunarYear){
 }
 const WEEKDAY_VN = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
 function getFestival(dd, mm, yy, lunar) {
-  // Sự kiện dương lịch
   if (dd === 1 && mm === 1) return "Tết Dương Lịch";
   if (dd === 30 && mm === 4) return "Giải phóng miền Nam";
   if (dd === 1 && mm === 5) return "Quốc tế Lao động";
   if (dd === 2 && mm === 9) return "Quốc khánh";
-  // Sự kiện âm lịch
   if (lunar.month === 1 && lunar.day === 1) return "Tết Nguyên Đán";
   if (lunar.month === 1 && lunar.day === 15) return "Rằm tháng Giêng";
   if (lunar.month === 5 && lunar.day === 5) return "Tết Đoan Ngọ";
@@ -451,32 +444,29 @@ function getFestival(dd, mm, yy, lunar) {
   if (lunar.month === 9 && lunar.day === 9) return "Tết Trùng Cửu";
   return "";
 }
+function lunarMonthToText(month) {
+  return 'th-' + month;
+}
 function updateAll(){
   const d = now();
   const dd = d.getDate();
   const mm = d.getMonth()+1;
   const yy = d.getFullYear();
-  const tzHour = -d.getTimezoneOffset() / 60;
+  const lunar = convertSolar2Lunar(dd, mm, yy, 7);
   document.getElementById('dayNumber').textContent = String(dd).padStart(2,'0');
   document.getElementById('monthLabel').textContent = mm + '/' + yy;
   document.getElementById('weekdayText').textContent = WEEKDAY_VN[d.getDay()].toUpperCase();
-  // Giờ, phút, giây
   const hh = String(d.getHours()).padStart(2,'0');
   const mi = String(d.getMinutes()).padStart(2,'0');
   const ss = String(d.getSeconds()).padStart(2,'0');
   document.getElementById('timeNow').textContent = hh + ':' + mi + ':' + ss;
-  // Âm lịch
-  const lunar = convertSolar2Lunar(dd, mm, yy, tzHour);
   document.getElementById('lunarDay').textContent = lunar.day;
-  const numberToText = ['KHÔNG','MỘT','HAI','BA','BỐN','NĂM','SÁU','BẢY','TÁM','CHÍN','MƯƠI','MƯỜI MỘT'];
-  document.getElementById('lunarDayTxt').textContent = (lunar.day <= 11 ? numberToText[lunar.day] : String(lunar.day)).toUpperCase();
+  document.getElementById('lunarDayTxt').textContent = lunarMonthToText(lunar.month);
   document.getElementById('lunarMonthText').textContent = getCanChiMonth(lunar.month, lunar.year);
   document.getElementById('canChiDay').textContent = getCanChiDay(jdFromDate(dd, mm, yy));
   document.getElementById('lunarYearText').textContent = getCanChiYear(lunar.year);
-  // Sự kiện đặc biệt
   let festival = getFestival(dd, mm, yy, lunar);
   document.getElementById('lunarFestival').textContent = festival;
-  // Châm ngôn ngẫu nhiên (mỗi lần truy cập giữ nguyên)
   if (updateAll.firstRun) {
     document.getElementById('quote').textContent = QUOTES[quoteIdx];
     updateAll.firstRun = false;
@@ -484,7 +474,7 @@ function updateAll(){
 }
 updateAll.firstRun = true;
 
-applyColorScheme(COLOR_SCHEMES[colorIdx]); // Áp dụng màu lịch ngẫu nhiên
+applyColorScheme(COLOR_SCHEMES[colorIdx]);
 
 (async function main(){
   await syncTimeFromInternet();

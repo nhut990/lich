@@ -565,11 +565,14 @@ const LAT = 10.9226902;
 const LON = 106.4386492;
 const WEATHER_KEY = "2559cb8fef8659e6207fae6e58359f0d";
 
-// Map OpenWeatherMap weather "main" or "id" to Vietnamese & accent color
+// Ưu tiên lấy description gốc nếu là tiếng Việt, nếu không thì dịch như cũ
 function getWeatherDescVN(main, id, description) {
+  // Nếu description có dấu tiếng Việt, ưu tiên trả về nguyên văn
+  if (description && !/^[a-zA-Z\s]+$/.test(description)) {
+    return description.charAt(0).toUpperCase() + description.slice(1);
+  }
   main = main ? main.toLowerCase() : '';
   description = description ? description.toLowerCase() : '';
-  // Xử lý một số trường hợp phổ biến ở Việt Nam
   if (main === "clouds") {
     if (description.includes("few")) return "Có mây nhẹ";
     if (description.includes("scattered")) return "Mây rải rác";
@@ -594,7 +597,6 @@ function getWeatherDescVN(main, id, description) {
   return description.charAt(0).toUpperCase() + description.slice(1);
 }
 
-// Đổi màu ô trạng thái dựa trên điều kiện thời tiết (accent)
 function getWeatherAccentColor(main) {
   main = main ? main.toLowerCase() : '';
   if (main === "clouds") return "#90caf9";      // xanh mây

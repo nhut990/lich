@@ -46,10 +46,11 @@
     .topbar-row{
       width:100%;
       display:flex;
-      align-items:center;
+      align-items:flex-start;
       justify-content:space-between;
       position: relative;
-      min-height: 46px;
+      min-height: 90px;
+      gap: 0;
     }
     .topbar .month { 
       font-weight:700; 
@@ -59,6 +60,8 @@
       flex: 1 1 0;
       text-align: left;
       z-index: 2;
+      align-self: flex-start;
+      padding-top: 5px;
     }
     .topbar .today { 
       font-weight:700; 
@@ -68,17 +71,20 @@
       flex: 1 1 0;
       text-align: right;
       z-index: 2;
+      align-self: flex-start;
+      padding-top: 5px;
     }
     .weather-center-block {
-      position: absolute;
-      left: 50%; top: 50%;
-      transform: translate(-50%, -50%);
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      min-width: 90px;
+      justify-content: flex-start;
+      min-width: 110px;
       z-index: 3;
+      margin-top: 0;
+      margin-bottom: 0;
+      flex: 0 1 auto;
+      padding-top: 2px;
     }
     .weather-title-block {
       font-size: 15px;
@@ -93,6 +99,22 @@
       text-align: center;
       margin-top: 1px;
       letter-spacing: 1px;
+    }
+    .weather-desc-block {
+      margin-top: 6px;
+      padding: 3px 20px;
+      border-radius: 16px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      text-align: center;
+      min-width: 90px;
+      max-width: 200px;
+      display: inline-block;
+      transition: background 0.4s;
+      box-shadow: 0 1px 6px rgba(0,0,0,0.07);
+      word-break: break-word;
     }
     .hero{
       padding:18px;
@@ -171,9 +193,10 @@
       .card{ width:320px }
       .day-num{ font-size:120px }
       .info-row{ gap:16px; }
-      .topbar-row { min-height: 52px; }
+      .topbar-row { min-height: 110px; }
       .weather-center-block .weather-title-block { font-size:13px; }
       .weather-center-block .weather-temp-block { font-size:19px; }
+      .weather-desc-block { max-width: 140px; font-size:13px; padding: 3px 7px;}
     }
   </style>
 </head>
@@ -185,6 +208,7 @@
         <div class="weather-center-block">
           <span class="weather-title-block">Thời tiết<br>Đức Hoà</span>
           <span class="weather-temp-block" id="weatherDeg">--</span>
+          <span class="weather-desc-block" id="weatherDesc">--</span>
         </div>
         <div class="today">Hôm nay</div>
       </div>
@@ -536,10 +560,54 @@ updateAll.firstRun = true;
 
 applyColorScheme(COLOR_SCHEMES[colorIdx]);
 
-// ----- WEATHER FUNCTION -----
+// WEATHER FUNCTION & ICON/COLOR MATCHING
 const LAT = 10.9226902;
 const LON = 106.4386492;
 const WEATHER_KEY = "2559cb8fef8659e6207fae6e58359f0d";
+
+// Map OpenWeatherMap weather "main" or "id" to Vietnamese & accent color
+function getWeatherDescVN(main, id, description) {
+  main = main ? main.toLowerCase() : '';
+  description = description ? description.toLowerCase() : '';
+  // Xử lý một số trường hợp phổ biến ở Việt Nam
+  if (main === "clouds") {
+    if (description.includes("few")) return "Có mây nhẹ";
+    if (description.includes("scattered")) return "Mây rải rác";
+    if (description.includes("broken") || description.includes("overcast")) return "Nhiều mây";
+    return "Có mây";
+  }
+  if (main === "clear") return "Trời nắng";
+  if (main === "rain") {
+    if (description.includes("light")) return "Mưa nhẹ";
+    if (description.includes("moderate")) return "Mưa vừa";
+    if (description.includes("heavy")) return "Mưa to";
+    return "Trời mưa";
+  }
+  if (main === "thunderstorm") return "Dông, có sấm chớp";
+  if (main === "drizzle") return "Mưa phùn";
+  if (main === "mist" || main === "fog" || main === "haze") return "Có sương mù";
+  if (main === "snow") return "Tuyết rơi";
+  if (main === "smoke") return "Có khói";
+  if (main === "dust" || main === "sand") return "Có bụi";
+  if (main === "squall" || main === "tornado") return "Lốc xoáy";
+  // fallback: lấy description và viết hoa
+  return description.charAt(0).toUpperCase() + description.slice(1);
+}
+
+// Đổi màu ô trạng thái dựa trên điều kiện thời tiết (accent)
+function getWeatherAccentColor(main) {
+  main = main ? main.toLowerCase() : '';
+  if (main === "clouds") return "#90caf9";      // xanh mây
+  if (main === "clear") return "#fbc02d";       // vàng nắng
+  if (main === "rain" || main === "drizzle") return "#4fc3f7"; // xanh nước
+  if (main === "thunderstorm") return "#7e57c2";// tím
+  if (main === "snow") return "#b2ebf2";        // xanh nhạt
+  if (main === "mist" || main === "fog" || main === "haze") return "#bdbdbd"; // xám
+  if (main === "smoke" || main === "dust" || main === "sand") return "#a1887f";
+  if (main === "squall" || main === "tornado") return "#e57373"; // đỏ nhạt
+  return "#f05a5a"; // màu accent mặc định
+}
+
 async function updateWeather(){
   try {
     const api = `https://api.openweathermap.org/data/2.5/weather?lat=${LAT}&lon=${LON}&appid=${WEATHER_KEY}&units=metric&lang=vi`;
@@ -548,8 +616,22 @@ async function updateWeather(){
     const data = await res.json();
     let temp = Math.round(data.main.temp);
     document.getElementById('weatherDeg').textContent = temp + '°C';
+
+    // Lấy trạng thái mô tả và đổi màu
+    let main = data.weather[0].main;
+    let id = data.weather[0].id;
+    let description = data.weather[0].description;
+    let vnDesc = getWeatherDescVN(main, id, description);
+    let accent = getWeatherAccentColor(main);
+
+    let descBlock = document.getElementById('weatherDesc');
+    descBlock.textContent = vnDesc;
+    descBlock.style.background = accent;
   } catch (e) {
     document.getElementById('weatherDeg').textContent = '--';
+    let descBlock = document.getElementById('weatherDesc');
+    descBlock.textContent = '--';
+    descBlock.style.background = "var(--accent)";
   }
 }
 

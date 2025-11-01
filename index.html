@@ -650,7 +650,7 @@ async function updateWeather(){
   updateWeather();
   setInterval(updateAll, 1000);
   setInterval(syncTimeFromInternet, 10 * 60 * 1000);
-  setInterval(updateWeather, 15 * 60 * 1000);
+  setInterval(updateWeather, 8 * 60 * 1000); // <--- Cập nhật weather mỗi 8 phút
 })();
 </script>
 </body>

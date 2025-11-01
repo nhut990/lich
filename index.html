@@ -560,71 +560,45 @@ updateAll.firstRun = true;
 
 applyColorScheme(COLOR_SCHEMES[colorIdx]);
 
-// WEATHER FUNCTION & ICON/COLOR MATCHING
+// WEATHERAPI.COM
 const LAT = 10.9226902;
 const LON = 106.4386492;
-const WEATHER_KEY = "2559cb8fef8659e6207fae6e58359f0d";
+const WEATHERAPI_KEY = "50e23ba054624b2d88450511250111";
 
-// Ưu tiên lấy description gốc nếu là tiếng Việt, nếu không thì dịch như cũ
-function getWeatherDescVN(main, id, description) {
-  // Nếu description có dấu tiếng Việt, ưu tiên trả về nguyên văn
-  if (description && !/^[a-zA-Z\s]+$/.test(description)) {
-    return description.charAt(0).toUpperCase() + description.slice(1);
-  }
-  main = main ? main.toLowerCase() : '';
-  description = description ? description.toLowerCase() : '';
-  if (main === "clouds") {
-    if (description.includes("few")) return "Có mây nhẹ";
-    if (description.includes("scattered")) return "Mây rải rác";
-    if (description.includes("broken") || description.includes("overcast")) return "Nhiều mây";
-    return "Có mây";
-  }
-  if (main === "clear") return "Trời nắng";
-  if (main === "rain") {
-    if (description.includes("light")) return "Mưa nhẹ";
-    if (description.includes("moderate")) return "Mưa vừa";
-    if (description.includes("heavy")) return "Mưa to";
-    return "Trời mưa";
-  }
-  if (main === "thunderstorm") return "Dông, có sấm chớp";
-  if (main === "drizzle") return "Mưa phùn";
-  if (main === "mist" || main === "fog" || main === "haze") return "Có sương mù";
-  if (main === "snow") return "Tuyết rơi";
-  if (main === "smoke") return "Có khói";
-  if (main === "dust" || main === "sand") return "Có bụi";
-  if (main === "squall" || main === "tornado") return "Lốc xoáy";
-  // fallback: lấy description và viết hoa
-  return description.charAt(0).toUpperCase() + description.slice(1);
+// Chuyển đổi trạng thái thời tiết sang tiếng Việt (weatherapi đã có tiếng Việt ở trường "condition.text" nếu dùng lang=vi)
+function getWeatherDescVN_weatherapi(conditionText) {
+  // Mặc định weatherapi trả về tiếng Việt nếu lang=vi, nên chỉ viết hoa đầu câu:
+  if (!conditionText) return "--";
+  return conditionText.charAt(0).toUpperCase() + conditionText.slice(1);
 }
 
-function getWeatherAccentColor(main) {
-  main = main ? main.toLowerCase() : '';
-  if (main === "clouds") return "#90caf9";      // xanh mây
-  if (main === "clear") return "#fbc02d";       // vàng nắng
-  if (main === "rain" || main === "drizzle") return "#4fc3f7"; // xanh nước
-  if (main === "thunderstorm") return "#7e57c2";// tím
-  if (main === "snow") return "#b2ebf2";        // xanh nhạt
-  if (main === "mist" || main === "fog" || main === "haze") return "#bdbdbd"; // xám
-  if (main === "smoke" || main === "dust" || main === "sand") return "#a1887f";
-  if (main === "squall" || main === "tornado") return "#e57373"; // đỏ nhạt
-  return "#f05a5a"; // màu accent mặc định
+function getWeatherAccentColor_weatherapi(conditionCode) {
+  // Dựa vào code của weatherapi, map code thành màu (tham khảo: https://www.weatherapi.com/docs/weather_conditions.json)
+  // Mã đơn giản, nhiều code sẽ match cùng màu chung
+  if ([1000].includes(conditionCode)) return "#fbc02d"; // Sunny/Clear
+  if ([1003,1006,1009].includes(conditionCode)) return "#90caf9"; // Cloudy/Overcast
+  if ([1063,1150,1153,1180,1183,1186,1189,1192,1195,1240,1243,1246].includes(conditionCode)) return "#4fc3f7"; // Rain
+  if ([1087,1273,1276,1279,1282].includes(conditionCode)) return "#7e57c2"; // Thunderstorm
+  if ([1066,1069,1072,1114,1117,1135,1147,1210,1213,1216,1219,1222,1225,1237,1249,1252,1255,1258,1261,1264].includes(conditionCode)) return "#b2ebf2"; // Snow/Fog/Mist
+  return "#f05a5a";
 }
 
 async function updateWeather(){
   try {
-    const api = `https://api.openweathermap.org/data/2.5/weather?lat=${LAT}&lon=${LON}&appid=${WEATHER_KEY}&units=metric&lang=vi`;
+    // Weatherapi.com: https://www.weatherapi.com/docs/
+    // API endpoint: http://api.weatherapi.com/v1/current.json?key=YOUR_KEY&q=LAT,LON&lang=vi
+    const api = `https://api.weatherapi.com/v1/current.json?key=${WEATHERAPI_KEY}&q=${LAT},${LON}&lang=vi`;
     const res = await fetch(api);
     if (!res.ok) throw new Error('Không lấy được thời tiết');
     const data = await res.json();
-    let temp = Math.round(data.main.temp);
+    let temp = Math.round(data.current.temp_c);
     document.getElementById('weatherDeg').textContent = temp + '°C';
 
-    // Lấy trạng thái mô tả và đổi màu
-    let main = data.weather[0].main;
-    let id = data.weather[0].id;
-    let description = data.weather[0].description;
-    let vnDesc = getWeatherDescVN(main, id, description);
-    let accent = getWeatherAccentColor(main);
+    let conditionText = data.current.condition.text;
+    let conditionCode = data.current.condition.code;
+
+    let vnDesc = getWeatherDescVN_weatherapi(conditionText);
+    let accent = getWeatherAccentColor_weatherapi(conditionCode);
 
     let descBlock = document.getElementById('weatherDesc');
     descBlock.textContent = vnDesc;

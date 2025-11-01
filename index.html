@@ -99,6 +99,21 @@
       text-align: center;
       margin-top: 1px;
       letter-spacing: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+    .weather-extra-block {
+      margin-top: 3px;
+      font-size: 14px;
+      color: #333;
+      text-align: center;
+      font-weight: 500;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
     }
     .weather-desc-block {
       margin-top: 6px;
@@ -197,6 +212,7 @@
       .weather-center-block .weather-title-block { font-size:13px; }
       .weather-center-block .weather-temp-block { font-size:19px; }
       .weather-desc-block { max-width: 140px; font-size:13px; padding: 3px 7px;}
+      .weather-extra-block { font-size:12px; }
     }
   </style>
 </head>
@@ -208,6 +224,10 @@
         <div class="weather-center-block">
           <span class="weather-title-block">Thời tiết<br>Đức Hoà</span>
           <span class="weather-temp-block" id="weatherDeg">--</span>
+          <div class="weather-extra-block">
+            <span id="weatherFeel">Cảm giác như: --</span>
+            <span id="weatherHumidity">Độ ẩm: --</span>
+          </div>
           <span class="weather-desc-block" id="weatherDesc">--</span>
         </div>
         <div class="today">Hôm nay</div>
@@ -591,8 +611,19 @@ async function updateWeather(){
     const res = await fetch(api);
     if (!res.ok) throw new Error('Không lấy được thời tiết');
     const data = await res.json();
+
     let temp = Math.round(data.current.temp_c);
-    document.getElementById('weatherDeg').textContent = temp + '°C';
+    let feelsLike = Math.round(data.current.feelslike_c);
+    let humidity = data.current.humidity;
+
+    // Nhiệt độ hiển thị kèm biểu tượng 🌡️
+    document.getElementById('weatherDeg').innerHTML = `<span>🌡️</span>${temp}°C`;
+
+    // Cảm giác như
+    document.getElementById('weatherFeel').innerHTML = `Cảm giác như: <span>🌡️</span>${feelsLike}°C`;
+
+    // Độ ẩm kèm biểu tượng 💧
+    document.getElementById('weatherHumidity').innerHTML = `Độ ẩm: <span>💧</span>${humidity}%`;
 
     let conditionText = data.current.condition.text;
     let conditionCode = data.current.condition.code;
@@ -604,7 +635,9 @@ async function updateWeather(){
     descBlock.textContent = vnDesc;
     descBlock.style.background = accent;
   } catch (e) {
-    document.getElementById('weatherDeg').textContent = '--';
+    document.getElementById('weatherDeg').innerHTML = '--';
+    document.getElementById('weatherFeel').innerHTML = 'Cảm giác như: --';
+    document.getElementById('weatherHumidity').innerHTML = 'Độ ẩm: --';
     let descBlock = document.getElementById('weatherDesc');
     descBlock.textContent = '--';
     descBlock.style.background = "var(--accent)";
